@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flock</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='85' font-family='Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif'>🦉</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --page-bg:   #2C2318;
+  --panel-bg:  #C47B3A;
+  --ink:       #1E1610;
+  --ink-soft:  #6B6058;
+  --ink-faint: #B8AFA3;
+  --card-bg:   #FFFFFF;
+  --card-border: rgba(30,22,16,0.12);
+  --card-sel:  #1E1610;
+  --card-sel-t:#F5F0E8;
+
+  --c0: #7A3B1E; --c0-bg: #F2E0D4;
+  --c1: #2E6644; --c1-bg: #D4EBE0;
+  --c2: #26527A; --c2-bg: #D0E4F2;
+  --c3: #6B5518; --c3-bg: #EDE8C8;
+}
+
+html { height: 100%; }
+
+body {
+  background: var(--page-bg);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+}
+
+/* ── Fixed top bar ── */
+.top-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 100;
+  background: var(--page-bg);
+  border-bottom: 1px solid rgba(245,240,232,0.06);
+}
+
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 52px 16px 48px;
+  box-sizing: border-box;
+  gap: 6px;
+}
+
+/* ── Logo ── */
+.logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(52px, 8vw, 72px);
+  font-weight: 400;
+  color: #F5F0E8;
+  letter-spacing: -2px;
+  text-align: center;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.logo em { font-style: italic; color: #C47B3A; }
+
+.tagline {
+  font-size: 11px;
+  color: rgba(245,240,232,0.38);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+/* ── Panel ── */
+.panel {
+  background: var(--panel-bg);
+  border-radius: 22px;
+  width: 100%;
+  max-width: min(760px, 96vw);
+  padding: clamp(8px, 1.5vw, 14px);
+}
+
+/* ── Solved ── */
+#solved { display: flex; flex-direction: column; gap: 7px; }
+#solved:not(:empty) { margin-bottom: 7px; }
+
+.sg {
+  border-radius: 11px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: clamp(90px, 12vw, 120px);
+  animation: sgIn 0.38s cubic-bezier(0.34,1.4,0.64,1);
+}
+
+@keyframes sgIn {
+  from { opacity:0; transform:scale(0.96) translateY(-8px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+.sg.c0 { background: var(--c0-bg); }
+.sg.c1 { background: var(--c1-bg); }
+.sg.c2 { background: var(--c2-bg); }
+.sg.c3 { background: var(--c3-bg); }
+
+.sg-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 29px;
+}
+.sg.c0 .sg-icon { background: rgba(122,59,30,0.13); }
+.sg.c1 .sg-icon { background: rgba(46,102,68,0.13); }
+.sg.c2 .sg-icon { background: rgba(38,82,122,0.13); }
+.sg.c3 .sg-icon { background: rgba(107,85,24,0.13); }
+
+.sg-label {
+  font-size: 20px; font-weight: 500; margin-bottom: 3px; line-height: 1.2;
+}
+.sg.c0 .sg-label { color: var(--c0); }
+.sg.c1 .sg-label { color: var(--c1); }
+.sg.c2 .sg-label { color: var(--c2); }
+.sg.c3 .sg-label { color: var(--c3); }
+.sg-words { font-size: 18px; color: var(--ink-soft); line-height: 1.45; }
+
+/* ── Grid ── */
+#grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(6px, 1.2vw, 11px);
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 11px;
+  height: clamp(90px, 12vw, 120px);
+  padding: 10px 8px;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  font-size: clamp(13px, 1.6vw, 15.5px);
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.card:hover:not(.selected) {
+  background: #EDE8DE;
+  border-color: rgba(30,22,16,0.28);
+}
+.card.selected {
+  background: var(--card-sel);
+  border-color: var(--card-sel);
+  color: var(--card-sel-t);
+}
+.card.pop   { animation: pop 0.22s ease; }
+.card.shake { animation: shk 0.34s ease; }
+@keyframes pop {
+  0%{transform:scale(1)} 40%{transform:scale(1.07)} 100%{transform:scale(1)}
+}
+@keyframes shk {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 60%{transform:translateX(6px)} 80%{transform:translateX(-3px)}
+}
+
+/* ── Below ── */
+.below {
+  width: 100%;
+  max-width: min(760px, 96vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.hearts { display: flex; gap: 8px; }
+.heart { width: 24px; height: 24px; transition: transform 0.3s, opacity 0.3s; }
+.heart svg { width: 100%; height: 100%; }
+.heart.gone { opacity: 0.15; transform: scale(0.74); }
+
+#hint {
+  font-size: 12.5px;
+  color: rgba(245,240,232,0.36);
+  letter-spacing: 0.04em;
+  min-height: 18px;
+  text-align: center;
+}
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 22px;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.12s, transform 0.1s;
+  letter-spacing: 0.01em;
+}
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.26; cursor: default; }
+.btn-ghost {
+  background: rgba(245,240,232,0.09);
+  color: rgba(245,240,232,0.7);
+  border: 1px solid rgba(245,240,232,0.15);
+}
+.btn-ghost:hover:not(:disabled) { background: rgba(245,240,232,0.16); }
+.btn-solid { background: #C47B3A; color: #FAF6EF; }
+.btn-solid:hover:not(:disabled) { filter: brightness(1.1); }
+
+/* ── End ── */
+#end {
+  display: none;
+  text-align: center; color: #F5F0E8;
+  padding: 32px 0 0;
+  animation: fadeUp 0.5s ease;
+  width: 100%; max-width: min(760px, 96vw);
+}
+@keyframes fadeUp {
+  from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)}
+}
+.end-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 38px; font-weight: 400;
+  color: #F5F0E8; margin-bottom: 10px;
+}
+
+.score-row { display:flex; justify-content:center; gap:8px; margin-bottom:28px; }
+.sc-dot { width:22px; height:22px; border-radius:50%; }
+.sc-dot.ok  { background:#2E6644; }
+.sc-dot.err { background:rgba(245,240,232,0.18); }
+.end-btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+/* ── Mode tabs ── */
+.mode-tabs {
+  display: flex; gap: 6px;
+}
+.mode-tab {
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  padding: 5px 14px; border-radius: 100px;
+  border: 1.5px solid rgba(140,90,40,0.25);
+  background: transparent; color: rgba(245,240,232,0.55);
+  cursor: pointer; transition: all 0.18s;
+}
+.mode-tab:hover { color: #F5F0E8; border-color: rgba(140,90,40,0.5); }
+.mode-tab.active { background: var(--ink); color: #F5F0E8; border-color: var(--ink); }
+.mode-tab.daily.active { background: #7a4eab; border-color: #7a4eab; color: #fff; }
+
+/* ── Stats bar ── */
+.stats-bar {
+  display: flex; gap: 6px; align-items: center;
+}
+.stat-pill {
+  font-family: 'DM Sans', sans-serif; font-size: 11px;
+  padding: 3px 10px; border-radius: 100px;
+  background: rgba(140,90,40,0.12); border: 1px solid rgba(140,90,40,0.22);
+  color: rgba(245,240,232,0.6);
+  white-space: nowrap;
+}
+.stat-pill strong { color: #F5F0E8; font-weight: 700; }
+
+/* ── Daily done banner ── */
+.daily-done {
+  display: none; text-align: center;
+  background: rgba(122,78,171,0.10); border: 1px solid rgba(122,78,171,0.35);
+  border-radius: 14px; padding: 14px 20px;
+  animation: fadeUp 0.3s ease;
+  width: 100%; max-width: min(760px, 96vw);
+  box-sizing: border-box;
+}
+.daily-done.show { display: block; }
+.daily-done-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px; font-weight: 400; color: #9a6ecb; margin-bottom: 4px;
+}
+.daily-done-sub { font-size: 13px; color: var(--ink-soft); margin-bottom: 0; }
+.daily-done-countdown { font-size: 12px; color: var(--ink-soft); opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+/* Proximity bar */
+#proximity-bar {
+  display: flex;
+  min-height: 36px;
+  gap: 8px;
+  margin-bottom: 0px;
+  justify-content: center;
+  flex-wrap: wrap;
+  visibility: hidden;
+}
+.prox-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 100px;
+  font-size: 13px; font-weight: 500;
+}
+.prox-pill .prox-icon { font-size: 16px; }
+.prox-pill .prox-count { font-size: 12px; opacity: 0.75; }
+.prox-pill.c0 { background: var(--c0-bg); color: var(--c0); }
+.prox-pill.c1 { background: var(--c1-bg); color: var(--c1); }
+.prox-pill.c2 { background: var(--c2-bg); color: var(--c2); }
+.prox-pill.c3 { background: var(--c3-bg); color: var(--c3); }
+.prox-pill.prox-hot { box-shadow: 0 0 0 2px currentColor; }
+
+/* Hint modal */
+#hint-modal {
+  display: none; position: fixed; inset: 0; z-index: 50;
+  align-items: center; justify-content: center;
+  background: rgba(20,14,8,0.7); backdrop-filter: blur(4px);
+}
+#hint-modal.open { display: flex; }
+.hint-box {
+  background: #F5F0E8; border-radius: 20px;
+  padding: 28px 28px 24px; width: min(440px, 90vw);
+  animation: fadeUp 0.28s ease;
+}
+.hint-box h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px; font-weight: 400; color: var(--ink); margin-bottom: 6px;
+}
+.hint-box p { font-size: 13px; color: var(--ink-soft); margin-bottom: 20px; }
+.hint-cats { display: flex; flex-direction: column; gap: 10px; }
+.hint-cat {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: 11px;
+}
+.hint-cat.c0 { background: var(--c0-bg); } .hint-cat.c1 { background: var(--c1-bg); }
+.hint-cat.c2 { background: var(--c2-bg); } .hint-cat.c3 { background: var(--c3-bg); }
+.hint-cat-icon { font-size: 22px; flex-shrink: 0; width: 36px; text-align: center; }
+.hint-cat-label { font-size: 14px; font-weight: 500; }
+.hint-cat.c0 .hint-cat-label { color: var(--c0); } .hint-cat.c1 .hint-cat-label { color: var(--c1); }
+.hint-cat.c2 .hint-cat-label { color: var(--c2); } .hint-cat.c3 .hint-cat-label { color: var(--c3); }
+.hint-close {
+  margin-top: 20px; width: 100%; padding: 10px;
+  background: var(--ink); color: #F5F0E8; border: none; border-radius: 100px;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer;
+}
+.hint-close:hover { filter: brightness(1.15); }
+
+/* ── Botón icono en top-bar ── */
+.btn-icon {
+  background: rgba(245,240,232,0.09);
+  border: 1px solid rgba(245,240,232,0.15);
+  color: rgba(245,240,232,0.75);
+  border-radius: 100px;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; cursor: pointer;
+  transition: background 0.12s;
+}
+.btn-icon:hover { background: rgba(245,240,232,0.16); }
+
+/* ── Modal de estadísticas ── */
+#stats-modal {
+  display: none; position: fixed; inset: 0; z-index: 50;
+  align-items: center; justify-content: center;
+  background: rgba(20,14,8,0.7); backdrop-filter: blur(4px);
+}
+#stats-modal.open { display: flex; }
+.stats-cards {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; margin-bottom: 20px;
+}
+.stats-card {
+  background: #F0EAE0; border-radius: 12px;
+  padding: 12px 6px; text-align: center;
+}
+.stats-card-num {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24px; color: var(--ink); line-height: 1;
+}
+.stats-card-label {
+  font-size: 9.5px; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px;
+}
+.stats-chart-title {
+  font-size: 11px; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;
+}
+.stats-chart { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+.stats-bar-row { display: flex; align-items: center; gap: 8px; }
+.stats-bar-label {
+  width: 14px; font-size: 12px; color: var(--ink-soft);
+  text-align: right; flex-shrink: 0;
+}
+.stats-bar-track {
+  flex: 1; background: #EDE6D8; border-radius: 6px;
+  height: 22px; overflow: hidden;
+}
+.stats-bar-fill {
+  height: 100%; background: #C47B3A; border-radius: 6px;
+  transition: width 0.6s ease; width: 0%;
+}
+.stats-bar-count {
+  width: 20px; font-size: 11px; color: var(--ink-soft); flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- Fixed top bar -->
+<div class="top-bar">
+  <div class="top-bar-left">
+    <div class="mode-tabs">
+      <button class="mode-tab daily active" id="tab-daily" onclick="switchMode('daily')">📅 Diario</button>
+      <button class="mode-tab" id="tab-practice" onclick="switchMode('practice')">🔁 Práctica</button>
+    </div>
+  </div>
+  <div class="top-bar-right">
+    <button class="btn-icon" id="btn-stats" onclick="openStats()" title="Estadísticas">📊</button>
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-pill" id="pill-day">Día <strong id="day-num">1</strong></div>
+      <div class="stat-pill" id="pill-streak">🔥 <strong id="streak-num">0</strong></div>
+      <div class="stat-pill" id="pill-played">Jugadas <strong id="played-num">0</strong></div>
+      <div class="stat-pill" id="pill-won">✓ <strong id="won-num">0</strong></div>
+    </div>
+  </div>
+</div>
+
+<div id="stats-modal" onclick="closeStatsModal(event)">
+  <div class="hint-box">
+    <h2>Tus estadísticas</h2>
+    <p>Solo cuentan las partidas del modo Diario.</p>
+    <div class="stats-cards">
+      <div class="stats-card"><div class="stats-card-num" id="stats-played">0</div><div class="stats-card-label">Jugadas</div></div>
+      <div class="stats-card"><div class="stats-card-num" id="stats-pct">0%</div><div class="stats-card-label">Victorias</div></div>
+      <div class="stats-card"><div class="stats-card-num" id="stats-streak">0</div><div class="stats-card-label">Racha</div></div>
+      <div class="stats-card"><div class="stats-card-num" id="stats-max-streak">0</div><div class="stats-card-label">Máx. racha</div></div>
+    </div>
+    <div class="stats-chart-title">Errores por partida ganada</div>
+    <div id="stats-chart" class="stats-chart"></div>
+    <button class="hint-close" onclick="document.getElementById('stats-modal').classList.remove('open')">Cerrar</button>
+  </div>
+</div>
+
+<div id="hint-modal" onclick="closeHint(event)">
+  <div class="hint-box">
+    <h2>Las cuatro categorías</h2>
+    <p>Sabes qué buscas, pero no qué aves pertenecen a cada una.</p>
+    <div class="hint-cats" id="hint-cats"></div>
+    <button class="hint-close" onclick="document.getElementById('hint-modal').classList.remove('open')">Cerrar</button>
+  </div>
+</div>
+<div class="page">
+  <div class="logo">Fl<em>ock</em></div>
+  <p class="tagline">Agrupa las 16 aves en 4 categorías</p>
+
+  <!-- Daily already done banner -->
+  <div class="daily-done" id="daily-done">
+    <div class="daily-done-title" id="daily-done-title">Ya completaste el puzzle de hoy</div>
+    <div class="daily-done-sub" id="daily-done-sub"></div>
+  </div>
+
+  <div class="panel">
+    <div id="solved"></div>
+    <div id="grid"></div>
+  </div>
+
+  <div class="below" id="below">
+    <div class="hearts" id="hearts"></div>
+    <div id="proximity-bar"></div>
+    <div id="hint"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost btn-shuffle" onclick="openHint()">Ver categorías 💡</button>
+      <button class="btn btn-ghost" onclick="doShuffle()">Barajar</button>
+      <button class="btn btn-ghost" id="btn-des" onclick="doDeselect()" disabled>Deseleccionar</button>
+      <button class="btn btn-solid" id="btn-ok" onclick="doConfirm()" disabled>Confirmar</button>
+    </div>
+  </div>
+
+  <div id="end">
+    <div class="end-title" id="end-title"></div>
+    <div class="score-row" id="score-row"></div>
+    <div class="end-btns" id="end-btns"></div>
+  </div>
+</div>
+
+<script>
+// Categorias agrupadas por eje tematico
+// Cada partida: 1 de taxonomia + 1 de habitat + 1 de dieta + 1 de comportamiento/biogeografia
+const EJES = {
+  taxonomia: [
+    { label: "Familia Accipitridae",   icon: "🦅", birds: ["Aguila real","Milano negro","Buitre leonado","Azor comun","Gavilan comun","Alimoche","Abejero europeo","Milano real","Culebrera europea","Buitre negro","Aguila pescadora","Aguila calzada"] },
+    { label: "Familia Falconidae",     icon: "⚔️",  birds: ["Halcon peregrino","Cernícalo vulgar","Esmerejón","Alcotan europeo","Cernícalo primilla","Halcon de Eleonora","Halcon sacre","Cernícalo patilargo"] },
+    { label: "Familia Muscicapidae",   icon: "🎵",  birds: ["Petirrojo europeo","Ruiseñor comun","Colirrojo tizon","Collalba gris","Tarabilla europea","Colirrojo real","Papamoscas gris","Collalba rubia","Papamoscas cerrojillo","Papamoscas negro"] },
+    { label: "Familia Rallidae",       icon: "🌾",  birds: ["Focha comun","Gallineta comun","Calamon comun","Polluela pintoja","Rascon europeo","Rascon de agua","Polluela chica","Focha moruna"] },
+    { label: "Familia Ardeidae",       icon: "🦢",  birds: ["Garza real","Garceta comun","Garcilla bueyera","Martinete comun","Avetoro comun","Garcilla cangrejera","Garza imperial","Garza purpurea"] },
+    { label: "Familia Corvidae",       icon: "🪶",  birds: ["Cuervo","Urraca","Arrendajo","Grajilla","Corneja negra","Graja","Rabilargo iberico","Chova piquirroja","Cascanueces"] },
+    { label: "Orden Strigiformes",     icon: "🦉",  birds: ["Buho real","Lechuza comun","Carabo comun","Autillo europeo","Mochuelo europeo","Buho chico","Buho campestre","Lechuza campestre"] },
+    { label: "Orden Charadriiformes",  icon: "🌊",  birds: ["Gaviota patiamarilla","Ostrero euroasiatico","Avoceta comun","Zarapito real","Frailecillo atlantico","Chorlitejo chico","Correlimos comun","Aguja colinegra","Archibebe comun","Arao comun","Chorlito dorado","Aguja colipinta","Correlimos gordo","Combatiente","Agachadiza comun","Archibebe claro","Andarrios chico","Andarrios grande","Alca comun"] },
+    { label: "Orden Anseriformes",     icon: "🦆",  birds: ["Anade real","Pato cuchara","Porron europeo","Cerceta comun","Cisne vulgar","Anade friso","Barnacla cariblanca","Negron comun","Ansar comun","Ansar campestre","Cisne cantor","Pato colorado","Porron monudo","Pato mandarin","Ansar egipcio","Ganso del Nilo","Mergansar grande"] },
+    { label: "Orden Piciformes",       icon: "🌲",  birds: ["Pico picapinos","Pito real","Torcecuello","Pito negro","Pico mediano","Pico menor","Pico dorsiblanco","Pito iberico"] },
+    { label: "Familia Fringillidae",   icon: "🎶",  birds: ["Jilguero","Verdecillo","Pinzon vulgar","Lugano","Piquituerto comun","Pardillo comun","Camachuelo comun","Pinzon de las nieves","Camachuelo trompetero","Escribano cerillo","Escribano montesino","Escribano de Laponia"] },
+    { label: "Familia Laridae",        icon: "⛵",  birds: ["Gaviota patiamarilla","Charran comun","Gaviota reidora","Pagaza piconegra","Gaviota tridactila","Charran artico","Gaviota argentea","Fumarel comun"] },
+    { label: "Familia Anatidae",       icon: "🏊",  birds: ["Anade real","Pato cuchara","Porron europeo","Cerceta comun","Anade friso","Negron comun","Porron monudo","Pato colorado","Ansar campestre","Ansar comun","Cisne cantor","Barnacla cariblanca"] },
+    { label: "Orden Columbiformes",    icon: "🕊",  birds: ["Paloma bravia","Tortola europea","Paloma torcaz","Tortola turca","Paloma zurita","Tortola del Senegal"] },
+    { label: "Familia Hirundinidae",   icon: "✈️",  birds: ["Golondrina comun","Avion comun","Avion zapador","Golondrina daurica","Golondrina ribereña","Avion roquero"] },
+    { label: "Familia Sylviidae",      icon: "🍃",  birds: ["Curruca cabecinegra","Curruca zarcera","Zarcero comun","Mosquitero musical","Mosquitero iberico","Curruca rabilarga","Curruca mirlona"] },
+    { label: "Orden Galliformes",      icon: "🐓",  birds: ["Perdiz roja","Codorniz comun","Faisan vulgar","Perdiz nival","Urogallo","Francolín comun"] },
+    { label: "Familia Paridae",        icon: "🌰",  birds: ["Carbonero comun","Herrerillo comun","Herrerillo capuchino","Carbonero garrapinos","Mito","Carbonero lugano"] },
+    { label: "Familia Turdidae",       icon: "🐦",  birds: ["Mirlo comun","Zorzal comun","Zorzal real","Mirlo capiblanco","Mirlo acuatico","Zorzal charlo"] },
+    { label: "Orden Apodiformes",      icon: "💨",  birds: ["Vencejo comun","Vencejo real","Vencejo cafre","Vencejo moro","Colibri gorjirrubi","Colibri cola de raqueta","Colibri de Anna"] },
+    { label: "Orden Ciconiiformes",    icon: "🌿",  birds: ["Ciguena blanca","Ciguena negra","Marabu africano","Ibis sagrado","Morito comun","Espatula comun"] },
+    { label: "Familia Scolopacidae",   icon: "🌊",  birds: ["Aguja colipinta","Aguja colinegra","Zarapito real","Correlimos comun","Correlimos gordo","Combatiente","Agachadiza comun","Archibebe comun","Archibebe claro","Andarrios chico","Andarrios grande"] },
+  ],
+  habitat: [
+    { label: "Aves de alta montaña",             icon: "🗻",  birds: ["Quebrantahuesos","Chova piquirroja","Acentor alpino","Perdiz nival","Treparriscos","Roquero rojo","Bisbita alpino","Halcon peregrino"] },
+    { label: "Aves esteparias y campos abiertos",icon: "🌄",  birds: ["Avutarda comun","Sison comun","Ganga iberica","Alcaravan comun","Canastera comun","Terrera comun","Alondra comun","Cogujada montesina","Ortega"] },
+    { label: "Aves pelagicas de alta mar",        icon: "🌍",  birds: ["Pardela balear","Paino comun","Alcatraz atlantico","Fulmar atlantico","Pagalo grande","Petrel de Bulwer","Pardela sombria","Pardela cenicienta"] },
+    { label: "Aves de humedales y marismas",      icon: "💧",  birds: ["Flamenco comun","Espatula comun","Morito comun","Garza imperial","Avetoro comun","Ciguenuela","Focha comun","Anade real","Aguja colinegra","Avoceta comun"] },
+    { label: "Aves de dehesa y olivar",           icon: "🌻",  birds: ["Abubilla","Abejaruco europeo","Alcaudon comun","Oropendola","Tortola europea","Cuco comun","Cogujada comun","Milano negro","Mochuelo europeo"] },
+    { label: "Aves de ribera y cursos de agua",   icon: "🏞️",  birds: ["Martin pescador","Mirlo acuatico","Lavandera cascadena","Andarrios chico","Andarrios grande","Anade real","Garza real","Somormujo lavanco","Focha comun"] },
+    { label: "Aves de costa rocosa atlantica",    icon: "🐚",  birds: ["Frailecillo atlantico","Arao comun","Alca comun","Cormoron monudo","Pagalo grande","Gaviota tridactila","Alcatraz atlantico","Ostrero euroasiatico"] },
+    { label: "Aves de bosque atlantico y mixto",  icon: "🌿",  birds: ["Carbonero comun","Herrerillo comun","Trepador azul","Agateador comun","Mito","Reyezuelo listado","Oropendola","Pico picapinos","Chochin"] },
+    { label: "Aves de bosque mediterraneo",       icon: "🌳",  birds: ["Rabilargo iberico","Abubilla","Tortola europea","Alcaudon comun","Curruca cabecinegra","Torcecuello","Herrerillo capuchino","Cogujada comun"] },
+    { label: "Aves de ciudad y entorno urbano",   icon: "🏙️",  birds: ["Gorrion comun","Vencejo comun","Paloma bravia","Cernícalo vulgar","Estornino negro","Cotorra argentina","Lechuza comun","Gavilan comun"] },
+    { label: "Aves de tundra artica",             icon: "❄️",  birds: ["Cisne cantor","Correlimos gordo","Chorlito dorado","Aguja colipinta","Ansar campestre","Escribano de Laponia","Pagalo grande","Zarapito real"] },
+    { label: "Aves de selva tropical",            icon: "🌴",  birds: ["Tucan toco","Quetzal","Ave del Paraiso","Guacamayo azul","Cacatua galah","Loro gris africano","Manakin","Hornero comun"] },
+  ],
+  dieta: [
+    { label: "Necrofagas y carronieras estrictas", icon: "🦴",  birds: ["Buitre leonado","Buitre negro","Alimoche","Quebrantahuesos","Milano real","Buitre orejudo","Marabu africano"] },
+    { label: "Insectivoras de caza aerea",         icon: "🦋",  birds: ["Vencejo comun","Golondrina comun","Avion comun","Abejaruco europeo","Chotacabras gris","Avion zapador","Golondrina daurica","Vencejo real"] },
+    { label: "Piscivoras especialistas",           icon: "🎣",  birds: ["Martin pescador","Garceta comun","Cormoron grande","Aguila pescadora","Somormujo lavanco","Garza real","Pagaza piconegra","Charran comun","Alcatraz atlantico","Mergansar grande"] },
+    { label: "Granivoras estrictas",               icon: "🌾",  birds: ["Gorrion comun","Jilguero","Verdecillo","Pinzon vulgar","Paloma torcaz","Piquituerto comun","Camachuelo comun","Escribano cerillo","Pinzon de las nieves"] },
+    { label: "Frugívoras y bayas",                 icon: "🍒",  birds: ["Zorzal comun","Mirlo comun","Arrendajo","Paloma torcaz","Petirrojo europeo","Curruca cabecinegra","Zorzal real","Mirlo capiblanco"] },
+    { label: "Nectarivoras",                       icon: "🌺",  birds: ["Colibri gorjirrubi","Suimanga de Palestina","Lori arcoiris","Mielero comun","Colibri cola de raqueta","Suimanga de collar","Colibri de Anna"] },
+    { label: "Omnivoras oportunistas",             icon: "🍽️",  birds: ["Cuervo","Corneja negra","Urraca","Ciguena blanca","Grajilla","Gaviota patiamarilla","Estornino negro","Paloma bravia"] },
+    { label: "Insectivoras de sotobosque",         icon: "🐛",  birds: ["Petirrojo europeo","Ruiseñor comun","Chochin","Curruca cabecinegra","Papamoscas cerrojillo","Mosquitero musical","Reyezuelo listado","Zarcero comun"] },
+  ],
+  comportamiento: [
+    { label: "Nidifugas al nacer",               icon: "🥚",  birds: ["Anade real","Perdiz roja","Focha comun","Alcaravan comun","Codorniz comun","Cisne vulgar","Avutarda comun","Sison comun","Chorlitejo chico","Grulla comun"] },
+    { label: "Nidifican en cavidades",           icon: "🕳️",  birds: ["Pico picapinos","Torcecuello","Herrerillo comun","Abubilla","Martin pescador","Mochuelo europeo","Estornino negro","Carbonero comun","Autillo europeo","Abejaruco europeo"] },
+    { label: "Reproduccion colonial",            icon: "🏘️",  birds: ["Flamenco comun","Garcilla bueyera","Avion comun","Gaviota patiamarilla","Ciguena blanca","Cormoron grande","Frailecillo atlantico","Avion zapador","Garceta comun","Espatula comun"] },
+    { label: "Dimorfismo sexual extremo",        icon: "🎨",  birds: ["Anade real","Faisan vulgar","Oropendola","Pinzon vulgar","Sison comun","Porron europeo","Combatiente","Lugano","Avetoro comun"] },
+    { label: "Endemicas o casi endemicas ibericas", icon: "📍", birds: ["Aguila imperial iberica","Rabilargo iberico","Pardela balear","Gorrion chillon","Escribano montesino","Camachuelo trompetero","Collalba del Atlas","Aguilucho cenizo"] },
+    { label: "Migradoras de paso estricto",      icon: "🧳",  birds: ["Aguja colipinta","Correlimos comun","Mosquitero musical","Papamoscas cerrojillo","Archibebe claro","Combatiente","Chorlito dorado","Agachadiza comun"] },
+    { label: "Especies exoticas invasoras",      icon: "⚡",  birds: ["Cotorra argentina","Cotorra de Kramer","Pico de coral","Ganso del Nilo","Ibis sagrado","Pato mandarin","Ansar egipcio","Faisan vulgar"] },
+    { label: "Imitadoras de sonidos",            icon: "📢",  birds: ["Ruiseñor comun","Mirlo comun","Estornino negro","Oropendola","Chochin","Curruca cabecinegra","Zarcero comun","Mirlo capiblanco"] },
+  ]
+};
+
+function pickOne(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generatePuzzle(maxAttempts = 3000) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const ejesOrder = shuffle(["taxonomia","habitat","dieta","comportamiento"]);
+
+    // Elegimos una categoría candidata por cada eje temático
+    const chosen = [];
+    for (let ci = 0; ci < 4; ci++) {
+      const eje = ejesOrder[ci];
+      const candidatos = shuffle([...EJES[eje]]);
+      const cat = candidatos[0];
+      if (!cat) { chosen.length = 0; break; }
+      chosen.push({ ...cat, eje });
+    }
+    if (chosen.length < 4) continue;
+
+    // Para cada categoría, solo se permiten aves que NO aparezcan en ninguna
+    // de las otras 3 categorías elegidas. Esto evita que una misma ave sea
+    // "correcta" para más de una categoría visible en el mismo puzzle.
+    const categories = [];
+    const used = new Set();
+    let ok = true;
+
+    for (let ci = 0; ci < 4; ci++) {
+      const cat = chosen[ci];
+      const otherBirds = new Set(
+        chosen.flatMap((c, i) => i !== ci ? c.birds : [])
+      );
+      const exclusive = shuffle(cat.birds.filter(b => !otherBirds.has(b) && !used.has(b)));
+
+      if (exclusive.length < 4) { ok = false; break; }
+
+      const picked = exclusive.slice(0, 4);
+      picked.forEach(b => used.add(b));
+      categories.push({ label: cat.label, icon: cat.icon, color: ci, words: picked });
+    }
+
+    if (ok) return { categories };
+  }
+
+  // No debería ocurrir nunca dada la variedad de categorías, pero por seguridad
+  // avisamos en consola en vez de generar un puzzle ambiguo.
+  console.error('No se pudo generar un puzzle sin ambigüedad tras ' + maxAttempts + ' intentos.');
+  return null;
+}
+
+let currentPuzzle = null;
+let cards = [], selected = new Set(), solved = new Set();
+let lives = 4, history = [], guessColors = [], over = false;
+let currentMode = "daily", countdownTimer = null;
+
+function start() {
+  selected.clear(); solved.clear();
+  lives = 4; history = []; guessColors = []; over = false;
+  document.getElementById("solved").innerHTML = "";
+  document.getElementById("end").style.display = "none";
+  document.getElementById("below").style.display = "flex";
+  document.getElementById("grid").style.display = "grid";
+  document.getElementById("hint").textContent = "";
+  document.getElementById("daily-done").classList.remove("show");
+  hideProximity();
+
+  updateStatsDisplay();
+
+  if (currentMode === 'daily') {
+    currentPuzzle = generateDailyPuzzle();
+
+    // Check if already completed today
+    const saved = loadDailyResult();
+    if (saved) {
+      // Restore the completed state visually
+      cards = currentPuzzle.categories.flatMap((cat, ci) => cat.words.map(w => ({ w, ci })));
+      currentPuzzle.categories.forEach((cat, ci) => { solved.add(ci); });
+      over = true;
+      history = saved.history || [];
+      guessColors = saved.guessColors || [];
+      document.getElementById("below").style.display = "none";
+      document.getElementById("grid").style.display = "none";
+      // Show all categories solved
+      currentPuzzle.categories.forEach((cat, ci) => {
+        const div = document.createElement("div");
+        div.className = "sg c" + cat.color;
+        div.innerHTML = "<div class='sg-icon'>" + cat.icon + "</div><div class='sg-text'><div class='sg-label'>" + cat.label + "</div><div class='sg-words'>" + cat.words.join(", ") + "</div></div>";
+        document.getElementById("solved").appendChild(div);
+      });
+      const title = saved.won
+        ? (saved.errors === 0 ? "Bandada perfecta 🎉" : "Puzzle completado ✅")
+        : "Sin intentos ❌";
+      const sub = saved.won
+        ? (saved.errors === 0 ? "Sin ningún error" : `Con ${saved.errors} error${saved.errors > 1 ? "es" : ""}`)
+        : `No lo conseguiste hoy`;
+      document.getElementById("daily-done-title").textContent = title;
+      document.getElementById("daily-done-sub").textContent = sub;
+      document.getElementById("daily-done").classList.add("show");
+      updateCountdown();
+      clearInterval(countdownTimer);
+      countdownTimer = setInterval(updateCountdown, 1000);
+      // Show end with practice button + countdown
+      const sr = document.getElementById("score-row"); sr.innerHTML = "";
+      document.getElementById("end-title").textContent = "";
+      document.getElementById("end-btns").innerHTML = `
+        <button class="btn btn-ghost" id="btn-share" onclick="shareResult(this)">Compartir 📤</button>
+        <button class="btn btn-solid" onclick="switchMode('practice')">Jugar en Práctica 🔁</button>
+        <div id="end-countdown" style="font-size:12px;color:rgba(245,240,232,0.45);margin-top:6px;width:100%;text-align:center;font-variant-numeric:tabular-nums;"></div>
+      `;
+      function tickEnd2() {
+        const el = document.getElementById("end-countdown");
+        if (!el) return;
+        const now = new Date(), tmrw = new Date(now);
+        tmrw.setDate(tmrw.getDate()+1); tmrw.setHours(0,0,0,0);
+        const d = tmrw - now;
+        const h = Math.floor(d/3600000), m = Math.floor((d%3600000)/60000), sec = Math.floor((d%60000)/1000);
+        el.textContent = "Próximo puzzle en " + String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") + ":" + String(sec).padStart(2,"0");
+      }
+      tickEnd2(); setInterval(tickEnd2, 1000);
+      document.getElementById("end").style.display = "block";
+      return;
+    }
+
+    // Try to restore in-progress game
+    const prog = loadDailyProgress();
+    if (prog) {
+      cards = prog.cards;
+      lives = prog.lives; history = prog.history; guessColors = prog.guessColors || [];
+      prog.solved.forEach(ci => {
+        solved.add(ci);
+        const cat = currentPuzzle.categories[ci];
+        const div = document.createElement("div");
+        div.className = "sg c" + cat.color;
+        div.innerHTML = "<div class='sg-icon'>" + cat.icon + "</div><div class='sg-text'><div class='sg-label'>" + cat.label + "</div><div class='sg-words'>" + cat.words.join(", ") + "</div></div>";
+        document.getElementById("solved").appendChild(div);
+      });
+      renderHearts(); renderGrid(); syncControls();
+      return;
+    }
+
+    // Fresh daily game
+    cards = currentPuzzle.categories.flatMap((cat, ci) => cat.words.map(w => ({ w, ci })));
+    shuffle(cards);
+  } else {
+    // Practice: random puzzle
+    currentPuzzle = generatePuzzle() || generatePuzzle(5000);
+    cards = currentPuzzle.categories.flatMap((cat, ci) => cat.words.map(w => ({ w, ci })));
+    shuffle(cards);
+  }
+
+  renderHearts(); renderGrid(); syncControls();
+}
+
+function renderGrid() {
+  const g = document.getElementById("grid");
+  g.innerHTML = "";
+  cards.filter(c => !solved.has(c.ci)).forEach(c => {
+    const d = document.createElement("div");
+    d.className = "card" + (selected.has(c.w) ? " selected" : "");
+    d.textContent = c.w;
+    d.onclick = () => tap(c.w, d);
+    g.appendChild(d);
+  });
+}
+
+function renderHearts() {
+  const el = document.getElementById("hearts");
+  el.innerHTML = "";
+  for (let i = 0; i < 4; i++) {
+    const h = document.createElement("div");
+    h.className = "heart" + (i >= lives ? " gone" : "");
+    const col = i < lives ? "#C47B3A" : "rgba(245,240,232,0.18)";
+    h.innerHTML = "<svg viewBox=\"0 0 24 24\" fill=\"" + col + "\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z\"/></svg>";
+    el.appendChild(h);
+  }
+}
+
+function tap(w, el) {
+  if (over) return;
+  if (selected.has(w)) { selected.delete(w); el.classList.remove("selected"); soundDeselect(); }
+  else if (selected.size < 4) {
+    selected.add(w); el.classList.add("selected", "pop"); soundSelect();
+    el.addEventListener("animationend", () => el.classList.remove("pop"), { once: true });
+  }
+  syncHint(); syncControls();
+}
+
+function doDeselect() { selected.clear(); renderGrid(); syncHint(); syncControls(); }
+
+function doShuffle() {
+  if (over) return;
+  soundShuffle();
+  const rem = cards.filter(c => !solved.has(c.ci));
+  shuffle(rem);
+  cards = [...cards.filter(c => solved.has(c.ci)), ...rem];
+  selected.clear(); renderGrid(); syncHint(); syncControls();
+}
+
+function syncControls() {
+  document.getElementById("btn-des").disabled = selected.size === 0;
+  document.getElementById("btn-ok").disabled  = selected.size !== 4;
+}
+
+function syncHint() {
+  const el = document.getElementById("hint");
+  if (selected.size === 0) { el.textContent = ""; return; }
+  if (selected.size === 4) { el.textContent = "Listo para confirmar"; return; }
+  el.textContent = selected.size + " de 4 seleccionadas";
+}
+
+function doConfirm() {
+  if (selected.size !== 4 || over) return;
+  const counts = [0,0,0,0];
+  const selColors = [...selected].map(w => cards.find(c => c.w === w).ci);
+  selColors.forEach(ci => counts[ci]++);
+  guessColors.push(selColors);
+  const hit = counts.findIndex(n => n === 4);
+  if (hit !== -1) {
+    history.push("ok");
+    soundCorrect();
+    solved.add(hit);
+    selected.clear();
+    const cat = currentPuzzle.categories[hit];
+    const div = document.createElement("div");
+    div.className = "sg c" + cat.color;
+    div.innerHTML = "<div class=\"sg-icon\">" + cat.icon + "</div><div class=\"sg-text\"><div class=\"sg-label\">" + cat.label + "</div><div class=\"sg-words\">" + cat.words.join(", ") + "</div></div>";
+    document.getElementById("solved").appendChild(div);
+    renderGrid(); syncHint(); syncControls();
+    saveDailyProgress(cards, [...selected], [...solved], lives, history);
+    if (solved.size === 4) { setTimeout(showEnd, 500); return; }
+  } else {
+    history.push("err"); lives--;
+    soundWrong();
+    renderHearts();
+    document.querySelectorAll(".card.selected").forEach(el => {
+      el.classList.add("shake");
+      el.addEventListener("animationend", () => el.classList.remove("shake"), { once: true });
+    });
+    showProximity(counts);
+    saveDailyProgress(cards, [...selected], [...solved], lives, history);
+    if (lives <= 0) { setTimeout(function() { revealAll(); showEnd(); }, 700); }
+  }
+}
+
+function revealAll() {
+  currentPuzzle.categories.forEach(function(cat, ci) {
+    if (solved.has(ci)) return;
+    solved.add(ci);
+    const div = document.createElement("div");
+    div.className = "sg c" + cat.color;
+    div.innerHTML = "<div class=\"sg-icon\">" + cat.icon + "</div><div class=\"sg-text\"><div class=\"sg-label\">" + cat.label + "</div><div class=\"sg-words\">" + cat.words.join(", ") + "</div></div>";
+    document.getElementById("solved").appendChild(div);
+  });
+  renderGrid();
+}
+
+function showEnd() {
+  over = true;
+  hideProximity();
+  clearDailyProgress();
+  document.getElementById("grid").style.display = "none";
+  document.getElementById("below").style.display = "none";
+  const errors = history.filter(h => h === "err").length;
+  const won = lives > 0;
+  if (won) soundWin(); else soundLose();
+
+  if (currentMode === "daily") {
+    saveDailyResult(won, errors);
+    recordDailyResult(won, errors);
+    updateStatsDisplay();
+    clearInterval(countdownTimer);
+    countdownTimer = setInterval(updateCountdown, 1000);
+    updateCountdown();
+  }
+
+  const s = loadStats();
+  let title;
+  if (errors === 0) title = "Bandada perfecta 🎉";
+  else if (won) title = "¡Bien hecho!";
+  else title = "Sin intentos ❌";
+  if (currentMode === "daily" && won) title += "";
+
+  document.getElementById("end-title").textContent = title;
+  const sr = document.getElementById("score-row");
+  sr.innerHTML = "";
+  history.forEach(h => {
+    const d = document.createElement("div");
+    d.className = "sc-dot " + (h === "ok" ? "ok" : "err");
+    sr.appendChild(d);
+  });
+
+  const btns = document.getElementById("end-btns");
+  if (currentMode === "daily") {
+    btns.innerHTML = `
+      <button class="btn btn-ghost" id="btn-share" onclick="shareResult(this)">Compartir 📤</button>
+      <button class="btn btn-solid" onclick="switchMode('practice')">Jugar en Práctica 🔁</button>
+      <div id="end-countdown" style="font-size:12px;color:rgba(245,240,232,0.45);margin-top:6px;width:100%;text-align:center;font-variant-numeric:tabular-nums;"></div>
+    `;
+    document.getElementById("daily-done").classList.remove("show");
+    function tickEnd() {
+      const el = document.getElementById("end-countdown");
+      if (!el) return;
+      const now = new Date(), tmrw = new Date(now);
+      tmrw.setDate(tmrw.getDate()+1); tmrw.setHours(0,0,0,0);
+      const d = tmrw - now;
+      const h = Math.floor(d/3600000), m = Math.floor((d%3600000)/60000), sec = Math.floor((d%60000)/1000);
+      el.textContent = "Próximo puzzle en " + String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") + ":" + String(sec).padStart(2,"0");
+    }
+    tickEnd(); setInterval(tickEnd, 1000);
+  } else {
+    btns.innerHTML = `<button class="btn btn-solid" onclick="nextPuzzle()">Nuevo puzzle</button>`;
+  }
+
+  document.getElementById("end").style.display = "block";
+}
+
+// ─── COMPARTIR RESULTADO ──────────────────────────────────────────────────────
+const SHARE_EMOJI = ['🟧', '🟩', '🟦', '🟨']; // c0..c3
+
+function buildShareText() {
+  const day = getDayNumber();
+  const won = loadDailyResult() ? loadDailyResult().won : lives > 0;
+  const errs = history.filter(h => h === "err").length;
+  const headerIcon = !won ? "❌" : (errs === 0 ? "🎉" : "✅");
+  const lines = guessColors.map(arr => arr.map(ci => SHARE_EMOJI[ci]).join(""));
+  return `Flock #${day} ${headerIcon}\n` + lines.join("\n") + `\nhttps://axellaor.github.io/flock/`;
+}
+
+function shareResult(btn) {
+  const text = buildShareText();
+  const finish = (label) => {
+    if (!btn) return;
+    const prev = btn.textContent;
+    btn.textContent = label;
+    setTimeout(() => { btn.textContent = prev; }, 2000);
+  };
+  if (navigator.share) {
+    navigator.share({ text }).then(() => finish("Compartido ✓")).catch(() => {});
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => finish("¡Copiado! ✓")).catch(() => fallbackCopyShare(text, finish));
+    return;
+  }
+  fallbackCopyShare(text, finish);
+}
+
+function fallbackCopyShare(text, finish) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    finish("¡Copiado! ✓");
+  } catch(e) {}
+}
+
+// ─── MODE & DAILY SYSTEM ─────────────────────────────────────────────────────
+function getDayNumber() {
+  const epoch = new Date('2026-06-29T00:00:00Z');
+  const now = new Date();
+  return Math.floor((now - epoch) / 86400000) + 1;
+}
+
+function getTodayKey() {
+  return 'flock_daily_' + getDayNumber();
+}
+
+// Deterministic seeded RNG for daily puzzle
+function seededRng(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+function shuffleSeeded(arr, rng) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generateDailyPuzzle() {
+  const day = getDayNumber();
+  const rng = seededRng(day * 31337);
+  const ejesKeys = ["taxonomia","habitat","dieta","comportamiento"];
+  
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const rng2 = seededRng(day * 31337 + attempt * 7919);
+    const ejesOrder = shuffleSeeded(ejesKeys, rng2);
+    const chosen = [];
+    for (let ci = 0; ci < 4; ci++) {
+      const eje = ejesOrder[ci];
+      const cats = shuffleSeeded([...EJES[eje]], rng2);
+      chosen.push({ ...cats[0], eje });
+    }
+    const categories = [];
+    const used = new Set();
+    let ok = true;
+    for (let ci = 0; ci < 4; ci++) {
+      const cat = chosen[ci];
+      const otherBirds = new Set(chosen.flatMap((c, i) => i !== ci ? c.birds : []));
+      const exclusive = shuffleSeeded(cat.birds.filter(b => !otherBirds.has(b) && !used.has(b)), rng2);
+      if (exclusive.length < 4) { ok = false; break; }
+      const picked = exclusive.slice(0, 4);
+      picked.forEach(b => used.add(b));
+      categories.push({ label: cat.label, icon: cat.icon, color: ci, words: picked });
+    }
+    if (ok) return { categories };
+  }
+  return generatePuzzle(); // fallback
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+function loadStats() {
+  const def = { played:0, won:0, streak:0, maxStreak:0, lastDay:0, dist:{0:0,1:0,2:0,3:0} };
+  try {
+    const s = JSON.parse(localStorage.getItem('flock_stats')) || def;
+    if (!s.dist) s.dist = {0:0,1:0,2:0,3:0};
+    return s;
+  }
+  catch(e) { return def; }
+}
+function saveStats(s) { try { localStorage.setItem('flock_stats', JSON.stringify(s)); } catch(e) {} }
+
+function recordDailyResult(win, errors) {
+  const s = loadStats();
+  const day = getDayNumber();
+  if (s.lastDay === day) return; // ya registrado hoy
+  s.played++;
+  if (win) {
+    s.won++;
+    s.streak = (s.lastDay === day - 1) ? s.streak + 1 : 1;
+    s.maxStreak = Math.max(s.maxStreak, s.streak);
+    const bucket = Math.min(errors, 3);
+    s.dist[bucket] = (s.dist[bucket] || 0) + 1;
+  } else {
+    s.streak = 0;
+  }
+  s.lastDay = day;
+  saveStats(s);
+}
+
+function updateStatsDisplay() {
+  const s = loadStats();
+  const day = getDayNumber();
+  document.getElementById('day-num').textContent = day;
+  document.getElementById('streak-num').textContent = s.streak;
+  document.getElementById('played-num').textContent = s.played;
+  document.getElementById('won-num').textContent = s.won;
+  document.getElementById('stats-bar').style.display = currentMode === 'daily' ? 'flex' : 'none';
+}
+
+// ─── DAILY PERSISTENCE ────────────────────────────────────────────────────────
+function saveDailyResult(won, errors) {
+  try { localStorage.setItem(getTodayKey(), JSON.stringify({ won, errors, ts: Date.now(), history: history, guessColors: guessColors })); } catch(e) {}
+}
+function loadDailyResult() {
+  try { const r = localStorage.getItem(getTodayKey()); return r ? JSON.parse(r) : null; }
+  catch(e) { return null; }
+}
+function saveDailyProgress(cardsState, selectedState, solvedArr, livesVal, historyArr) {
+  if (currentMode !== 'daily') return;
+  try {
+    localStorage.setItem(getTodayKey() + '_prog', JSON.stringify({
+      cards: cardsState, solved: solvedArr, lives: livesVal, history: historyArr, guessColors: guessColors
+    }));
+  } catch(e) {}
+}
+function loadDailyProgress() {
+  try { const r = localStorage.getItem(getTodayKey() + '_prog'); return r ? JSON.parse(r) : null; }
+  catch(e) { return null; }
+}
+function clearDailyProgress() {
+  try { localStorage.removeItem(getTodayKey() + '_prog'); } catch(e) {}
+}
+
+// ─── COUNTDOWN ────────────────────────────────────────────────────────────────
+function updateCountdown() {
+  const el = document.getElementById('daily-done-countdown');
+  if (!el) return;
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const diff = tomorrow - now;
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  el.textContent = `Próximo puzzle en ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// ─── MODE SWITCH ──────────────────────────────────────────────────────────────
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('tab-daily').classList.toggle('active', mode === 'daily');
+  document.getElementById('tab-daily').classList.toggle('daily', mode === 'daily');
+  document.getElementById('tab-practice').classList.toggle('active', mode === 'practice');
+  clearInterval(countdownTimer);
+  start();
+}
+
+function nextPuzzle() {
+  if (currentMode === 'daily') switchMode('practice');
+  else start();
+}
+function replayPuzzle() { start(); }
+
+function showProximity(counts) {
+  const bar = document.getElementById("proximity-bar");
+  bar.innerHTML = "";
+  bar.style.visibility = "visible";
+  const order = [0,1,2,3].sort((a,b) => counts[b]-counts[a]);
+  order.forEach(ci => {
+    if (solved.has(ci)) return;
+    const cat = currentPuzzle.categories[ci];
+    const n = counts[ci];
+    if (n === 0) return;
+    const pill = document.createElement("div");
+    pill.className = `prox-pill c${cat.color}${n >= 3 ? " prox-hot" : ""}`;
+    pill.innerHTML = `<span class="prox-icon">${cat.icon}</span><span class="prox-count">${n}/4</span>`;
+    bar.appendChild(pill);
+  });
+  clearTimeout(bar._timer);
+  bar._timer = setTimeout(hideProximity, 4000);
+}
+
+function hideProximity() {
+  const bar = document.getElementById("proximity-bar");
+  if (!bar) return;
+  bar.style.visibility = "hidden";
+  bar.innerHTML = "";
+}
+
+function openHint() {
+  soundHint();
+  const cats = document.getElementById("hint-cats");
+  cats.innerHTML = "";
+  currentPuzzle.categories.forEach((cat, ci) => {
+    if (solved.has(ci)) return;
+    const div = document.createElement("div");
+    div.className = `hint-cat c${cat.color}`;
+    div.innerHTML = `<span class="hint-cat-icon">${cat.icon}</span><span class="hint-cat-label">${cat.label}</span>`;
+    cats.appendChild(div);
+  });
+  document.getElementById("hint-modal").classList.add("open");
+}
+
+function closeHint(e) {
+  if (e.target === document.getElementById("hint-modal"))
+    document.getElementById("hint-modal").classList.remove("open");
+}
+
+function openStats() {
+  const s = loadStats();
+  const pct = s.played ? Math.round(s.won / s.played * 100) : 0;
+  document.getElementById('stats-played').textContent = s.played;
+  document.getElementById('stats-pct').textContent = pct + '%';
+  document.getElementById('stats-streak').textContent = s.streak;
+  document.getElementById('stats-max-streak').textContent = s.maxStreak;
+
+  const dist = s.dist || {0:0,1:0,2:0,3:0};
+  const max = Math.max(1, ...[0,1,2,3].map(i => dist[i] || 0));
+  const chart = document.getElementById('stats-chart');
+  chart.innerHTML = '';
+  for (let i = 0; i <= 3; i++) {
+    const count = dist[i] || 0;
+    const w = Math.max(count ? 4 : 0, Math.round(count / max * 100));
+    const row = document.createElement('div');
+    row.className = 'stats-bar-row';
+    row.innerHTML = `<div class="stats-bar-label">${i}</div><div class="stats-bar-track"><div class="stats-bar-fill" data-w="${w}"></div></div><div class="stats-bar-count">${count > 0 ? count : ''}</div>`;
+    chart.appendChild(row);
+  }
+  document.getElementById('stats-modal').classList.add('open');
+  setTimeout(() => {
+    document.querySelectorAll('#stats-chart .stats-bar-fill').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 30);
+}
+
+function closeStatsModal(e) {
+  if (e.target === document.getElementById("stats-modal"))
+    document.getElementById("stats-modal").classList.remove("open");
+}
+
+// ─── SOUND SYSTEM ─────────────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+function playTone({ notes, type = 'sine', volume = 0.25 }) {
+  try {
+    const ctx = getAudioCtx();
+    notes.forEach(({ freq, time = 0, dur = 0.1 }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + time);
+      gain.gain.setValueAtTime(0, ctx.currentTime + time);
+      gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + time + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + time + dur);
+      osc.start(ctx.currentTime + time);
+      osc.stop(ctx.currentTime + time + dur + 0.05);
+    });
+  } catch(e) {}
+}
+function soundSelect() {
+  playTone({ notes: [{ freq: 880, dur: 0.06 }], type: 'sine', volume: 0.12 });
+}
+function soundDeselect() {
+  playTone({ notes: [{ freq: 660, dur: 0.05 }], type: 'sine', volume: 0.1 });
+}
+function soundCorrect() {
+  playTone({ notes: [
+    { freq: 587, time: 0,    dur: 0.1 },
+    { freq: 880, time: 0.08, dur: 0.16 },
+  ], type: 'sine', volume: 0.22 });
+}
+function soundWrong() {
+  playTone({ notes: [{ freq: 300, dur: 0.05 }], type: 'sine', volume: 0.1 });
+}
+function soundWin() {
+  playTone({ notes: [
+    { freq: 523, time: 0,   dur: 0.12 },
+    { freq: 659, time: 0.1, dur: 0.12 },
+    { freq: 784, time: 0.2, dur: 0.12 },
+    { freq: 1047,time: 0.3, dur: 0.25 },
+  ], type: 'triangle', volume: 0.28 });
+}
+function soundLose() {
+  playTone({ notes: [
+    { freq: 440, time: 0,   dur: 0.15 },
+    { freq: 370, time: 0.15,dur: 0.15 },
+    { freq: 311, time: 0.3, dur: 0.25 },
+  ], type: 'sawtooth', volume: 0.18 });
+}
+function soundHint() {
+  playTone({ notes: [
+    { freq: 740, time: 0,   dur: 0.1 },
+    { freq: 988, time: 0.1, dur: 0.15 },
+  ], type: 'sine', volume: 0.22 });
+}
+function soundShuffle() {
+  playTone({ notes: [
+    { freq: 520, time: 0,    dur: 0.05 },
+    { freq: 620, time: 0.04, dur: 0.05 },
+  ], type: 'triangle', volume: 0.12 });
+}
+
+currentMode = "daily";
+start();
+</script>
+
+<!-- Credit bottom left -->
+<div style="position:fixed;bottom:1.2rem;left:1.5rem;z-index:200;font-family:'Syne Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;color:rgba(245,240,232,0.35);line-height:1.6;user-select:none;pointer-events:none;">
+  Sylv Wizard Games<br>© 2026
+</div>
+<!-- Corner buttons -->
+<div style="position:fixed;bottom:1.5rem;right:1.5rem;display:flex;flex-direction:row;gap:0.6rem;z-index:200;">
+  <button onclick="window.open('https://ko-fi.com/sylvwizard','_blank')" title="Invítame a un café"
+    style="width:46px;height:46px;border-radius:10px;border:1.5px solid rgba(245,240,232,0.18);background:rgba(44,35,24,0.85);
+           font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+           box-shadow:0 2px 12px rgba(0,0,0,0.3);transition:transform 0.15s,border-color 0.15s;"
+    onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='#C47B3A'"
+    onmouseout="this.style.transform='';this.style.borderColor='rgba(245,240,232,0.18)'">☕</button>
+  <button id="emailBtn" onclick="copyEmail()" title="Copiar correo"
+    style="width:46px;height:46px;border-radius:10px;border:1.5px solid rgba(245,240,232,0.18);background:rgba(44,35,24,0.85);
+           font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+           box-shadow:0 2px 12px rgba(0,0,0,0.3);transition:transform 0.15s,border-color 0.15s;"
+    onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='#C47B3A'"
+    onmouseout="this.style.transform='';this.style.borderColor='rgba(245,240,232,0.18)'">📧</button>
+</div>
+<script>
+function copyEmail() {
+  const email = 'sylvwizard@gmail.com';
+  navigator.clipboard.writeText(email).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = email; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  });
+  const btn = document.getElementById('emailBtn');
+  const prev = btn.innerHTML;
+  btn.innerHTML = '✓';
+  btn.style.borderColor = '#C47B3A';
+  setTimeout(() => { btn.innerHTML = prev; btn.style.borderColor = 'rgba(245,240,232,0.18)'; }, 2000);
+}
+</script>
+
+</body>
+</html>
