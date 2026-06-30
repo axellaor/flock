@@ -34,16 +34,3 @@ Este proyecto está construido sin frameworks externos para mantenerlo ligero y 
 * **Generador Pseudoaleatorio con Semilla:** El modo diario usa una función `seededRng` basada en el número de día desde una fecha de referencia, garantizando que todos los jugadores reciban el mismo puzzle.
 * **LocalStorage API:** Para la persistencia del progreso diario en curso, el resultado del día ya jugado y las estadísticas históricas (partidas, racha, distribución de errores).
 * **Web Audio API:** Síntesis de tonos en tiempo real mediante osciladores, sin dependencias de archivos de audio.
-
----
-
-## 🔄 Cambios respecto a la versión anterior
-
-Comparando con la implementación previa de Flock, este `index.html` introduce los siguientes cambios:
-
-* **`recordDailyResult` ahora recibe `errors` además de `win`**, y actualiza un objeto `dist` (distribución de errores: 0, 1, 2, 3+) en las estadísticas guardadas, usado para alimentar el nuevo gráfico de barras del modal de estadísticas.
-* **Nuevo modal de estadísticas (`openStats` / `stats-modal`)**: muestra partidas jugadas, porcentaje de victorias, racha actual, racha máxima y un gráfico de barras animado con la distribución histórica de errores en partidas ganadas.
-* **Sistema de compartir resultado (`buildShareText` / `shareResult`)**: genera un texto tipo Wordle con emojis de colores (`🟧🟩🟦🟨`) representando, intento a intento, a qué categoría pertenecía cada carta seleccionada. Usa `navigator.share` si está disponible, o copia al portapapeles como alternativa.
-* **Nueva variable `guessColors`**: registra, por cada intento, los colores de categoría de las 4 cartas seleccionadas. Se guarda junto al progreso diario (`saveDailyProgress`) y al resultado final (`saveDailyResult`) para poder reconstruir el resumen compartible aunque se recargue la página.
-* **La barra de proximidad (`showProximity`, clase `.prox-hot`) ha vuelto a estar activa** tras fallar un intento, mostrando cuántas aves de la selección pertenecían a cada categoría restante.
-* **Pequeño ajuste en `loadStats`**: si el objeto guardado en `localStorage` no tiene el campo `dist` (usuarios con estadísticas previas a este cambio), se inicializa automáticamente para evitar errores.
