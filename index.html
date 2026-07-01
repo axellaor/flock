@@ -103,7 +103,63 @@ body {
   margin-bottom: 4px;
 }
 
-/* ── Panel ── */
+/* ── Splash de carga ── */
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--page-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+#splash.hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.splash-bird {
+  font-size: 56px;
+  line-height: 1;
+  animation: splash-bob 1.8s ease-in-out infinite;
+}
+@keyframes splash-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-9px) rotate(-3deg); }
+}
+.splash-logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(48px, 9vw, 76px);
+  font-weight: 400;
+  color: #F5F0E8;
+  letter-spacing: -2px;
+  text-align: center;
+  line-height: 1;
+}
+.splash-logo em { font-style: italic; color: #C47B3A; }
+.splash-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(245,240,232,0.45);
+}
+.splash-spinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid rgba(245,240,232,0.22);
+  border-top-color: #C47B3A;
+  animation: splash-spin 0.8s linear infinite;
+}
+@keyframes splash-spin { to { transform: rotate(360deg); } }
+
+
 .panel {
   background: var(--panel-bg);
   border-radius: 22px;
@@ -430,6 +486,16 @@ body {
 </head>
 <body>
 
+<!-- Splash de carga -->
+<div id="splash">
+  <div class="splash-bird">🦉</div>
+  <div class="splash-logo">Fl<em>ock</em></div>
+  <div class="splash-loading">
+    <span class="splash-spinner"></span>
+    <span id="splash-text">Cargando aves…</span>
+  </div>
+</div>
+
 <!-- Fixed top bar -->
 <div class="top-bar">
   <div class="top-bar-left">
@@ -508,9 +574,19 @@ body {
 </div>
 
 <script>
-// Categorias agrupadas por eje tematico (Actualizado desde la Tabla Flock)
-// Cada partida: 1 de taxonomia + 1 de habitat + 1 de dieta + 1 de comportamiento
-const EJES = {
+// ─── FUENTE DE DATOS: Google Sheet publicada como CSV ─────────────────────────
+// Estructura esperada de la hoja (una fila por categoria):
+// eje | label | icon | ave1 | ave2 | ave3 | ave4 | ave5 | ave6 | ave7 | ave8
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpNVJTx-If-Cwj3zTzj6NBt3Lo36bPHUYv5BHIT9BvoXbxbk8yF_OIaC6Wdl_Kn9Hv-OVhqeFkYYBi/pub?gid=0&single=true&output=csv";
+const EJE_KEYS = ["taxonomia", "habitat", "dieta", "comportamiento"];
+
+// Categorias agrupadas por eje tematico (se rellena desde la hoja de calculo,
+// tiene PRIORIDAD sobre cualquier dato del codigo)
+let EJES = null;
+
+// Datos de reserva incluidos en el propio codigo: se usan SOLO si la hoja
+// de calculo no se puede cargar (ni siquiera hay copia en cache local).
+const FALLBACK_EJES = {
   taxonomia: [
     { label: "Familia Accipitridae", icon: "🦅", birds: ["Águila real", "Gavilán común", "Azor común", "Milano real", "Buitre leonado", "Ratonero común", "Quebrantahuesos", "Aguilucho lagunero"] },
     { label: "Familia Falconidae", icon: "⚔️", birds: ["Halcón peregrino", "Cernícalo vulgar", "Alcotán europeo", "Esmerejón", "Halcón gerifalte", "Cernícalo primilla", "Halcón de Eleonor", "Halcón sacre"] },
@@ -584,6 +660,100 @@ const EJES = {
     { label: "Cooperan en la cría del grupo", icon: "👪", birds: ["Rabilargo ibérico", "Mito común", "Abejaruco común", "Carbonero común", "Arrendajo euroasiático", "Grajilla occidental", "Cuervo grande", "Urraca común"] }
   ]
 };
+
+
+function normalizeKey(s) {
+  return (s || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .trim().toLowerCase();
+}
+
+// Parser CSV sencillo, soporta campos entre comillas con comas dentro
+function parseCSV(text) {
+  text = text.replace(/^\uFEFF/, "");
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], next = text[i + 1];
+    if (inQuotes) {
+      if (c === '"' && next === '"') { field += '"'; i++; }
+      else if (c === '"') { inQuotes = false; }
+      else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ",") { row.push(field); field = ""; }
+      else if (c === "\r") { /* ignorar */ }
+      else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+      else field += c;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(f => f.trim() !== ""));
+}
+
+// Google no envia cabeceras CORS en el CSV publicado, asi que un fetch directo
+// falla desde cualquier origen que no sea el propio docs.google.com (incluido
+// un archivo local). Probamos primero directo y, si falla, usamos un proxy CORS.
+async function fetchCsvText(baseUrl) {
+  const bust = baseUrl + (baseUrl.includes("?") ? "&" : "?") + "_ts=" + Date.now();
+  const attempts = [
+    bust,
+    "https://api.allorigins.win/raw?url=" + encodeURIComponent(bust),
+    "https://corsproxy.io/?url=" + encodeURIComponent(bust),
+  ];
+  let lastErr = null;
+  for (const url of attempts) {
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) { lastErr = new Error("HTTP " + res.status + " (" + url + ")"); continue; }
+      const text = await res.text();
+      if (!text || !text.trim()) { lastErr = new Error("Respuesta vacia (" + url + ")"); continue; }
+      return text;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("No se pudo obtener el CSV");
+}
+
+async function loadEjesFromSheet() {
+  const text = await fetchCsvText(SHEET_CSV_URL);
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error("La hoja esta vacia");
+
+  const header = rows[0].map(normalizeKey);
+  const idxEje = header.indexOf("eje");
+  const idxLabel = header.indexOf("label");
+  const idxIcon = header.indexOf("icon");
+  const aveIdx = [];
+  for (let i = 1; i <= 8; i++) {
+    const pos = header.indexOf("ave" + i);
+    if (pos !== -1) aveIdx.push(pos);
+  }
+  if (idxEje === -1 || idxLabel === -1 || aveIdx.length === 0) {
+    throw new Error("Cabecera de la hoja inesperada");
+  }
+
+  const ejes = { taxonomia: [], habitat: [], dieta: [], comportamiento: [] };
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const ejeKey = normalizeKey(row[idxEje]);
+    if (!ejes.hasOwnProperty(ejeKey)) continue; // fila con eje vacio/desconocido -> se ignora
+    const label = (row[idxLabel] || "").trim();
+    const icon = idxIcon !== -1 ? (row[idxIcon] || "").trim() : "🐦";
+    const birds = aveIdx.map(i => (row[i] || "").trim()).filter(b => b !== "");
+    if (!label || birds.length < 4) continue; // categoria incompleta -> se ignora
+    ejes[ejeKey].push({ label, icon, birds });
+  }
+
+  EJE_KEYS.forEach(k => {
+    if (!ejes[k] || ejes[k].length === 0) {
+      throw new Error('No hay categorias validas para el eje "' + k + '" en la hoja');
+    }
+  });
+
+  return ejes;
+}
 
 function pickOne(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -1248,8 +1418,46 @@ function soundShuffle() {
   ], type: 'triangle', volume: 0.12 });
 }
 
-currentMode = "daily";
-start();
+async function initFlock() {
+  const splash = document.getElementById("splash");
+  const splashText = document.getElementById("splash-text");
+  const gridEl = document.getElementById("grid");
+  const minWait = new Promise(resolve => setTimeout(resolve, 600));
+
+  const dataPromise = (async () => {
+    try {
+      EJES = await loadEjesFromSheet();
+      try { localStorage.setItem("flock_ejes_cache", JSON.stringify(EJES)); } catch (e) {}
+    } catch (err) {
+      console.error("No se pudo cargar la hoja de calculo:", err);
+      try {
+        const cached = localStorage.getItem("flock_ejes_cache");
+        if (cached) EJES = JSON.parse(cached);
+      } catch (e) {}
+      if (!EJES) {
+        console.warn("Usando los datos de reserva incluidos en el codigo.");
+        EJES = FALLBACK_EJES;
+      }
+    }
+  })();
+
+  await Promise.all([dataPromise, minWait]);
+
+  if (!EJES) {
+    if (splashText) splashText.textContent = "No se pudieron cargar los datos";
+    gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--ink-soft);font-size:14px;">No se pudieron cargar los datos del puzzle desde la hoja de calculo.<br>Comprueba tu conexion o que la hoja siga publicada, y recarga la pagina.</div>';
+  } else {
+    currentMode = "daily";
+    start();
+  }
+
+  if (splash) {
+    splash.classList.add("hide");
+    setTimeout(() => splash.remove(), 600);
+  }
+}
+
+initFlock();
 </script>
 
 <!-- Credit bottom left -->
